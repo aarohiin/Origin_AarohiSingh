@@ -1,6 +1,6 @@
 dataset:
-  cracks_dir: "./cracks.v1i.coco"          # override with absolute path if needed
-  drywall_dir: "./Drywall-Join-Detect.v2i.coco"
+  cracks_dir: "/Users/apple/Desktop/origin/cracks.v1i.coco"
+  drywall_dir: "/Users/apple/Desktop/origin/Drywall-Join-Detect.v2i.coco"
   roboflow_api_key: "YOUR_API_KEY"         # set to download automatically
   cracks_workspace: "cracks"
   cracks_version: 1
