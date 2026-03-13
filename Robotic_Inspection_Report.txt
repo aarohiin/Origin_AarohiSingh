@@ -1,0 +1,33 @@
+CLIPSeg Robotic Inspection Pipeline Report
+
+================================================================================
+Methodology
+================================================================================
+To tackle the robotic inspection task for fine structural defects, we employed CLIPSeg, a Vision-Language Model capable of text-prompted image segmentation. 
+Our architectural approach involved:
+1. Model Transfer Learning: We utilized the pre-trained `CIDAS/clipseg-rd64-refined` model. To prevent catastrophic forgetting and maintain language alignment, both the CLIP Vision Transformer (ViT) backbone and the Text Encoder were strictly frozen. Only the decoder head (approximately ~1.12 million parameters, or 0.75% of the total model) was set to trainable.
+2. Hybrid Loss Function: Defect datasets (especially concrete cracks) exhibit extreme class imbalance, often measuring just 2-3% positive foreground pixels. We implemented a custom Combo Loss combining Focal Binary Cross-Entropy (Focal-BCE) with Dice Loss. Focal-BCE heavily penalizes false negatives via a `pos_weight` multiplier of 10.0 and down-weights easy-to-classify background pixels (gamma=2.0), while Dice Loss ensures overarching spatial overlap.
+3. Tiled Inference Strategy: Robotic cameras output high-resolution feeds where cracks are sub-pixel width. Standard neural network downscaling destroys these thin features. During inference, we implemented a sliding-window Tiled Evaluation approach with overlap averaging. This slices high-resolution imagery into overlapping 352x352 tiles, feeds them individually through the model, and stitches the continuous probability heatmap back together, ensuring fine features are not erased.
+4. Prompt Ensembling: We dynamically average probability heatmaps across multiple prompts (e.g., "segment crack", "cracks in concrete", "damaged surface") to improve the stability and robustness of predictions against complex backgrounds.
+
+================================================================================
+Data-preparation
+================================================================================
+The pipeline seamlessly integrates two complex COCO-formatted datasets: a Cracks V1 dataset and a Drywall Joint verification dataset.
+1. Resolution and Loading: Ground truth annotations composed of COCO bounding boxes and segmentation polygons are actively rasterized into memory-efficient binary masks (`uint8`) on the fly. 
+2. Stable Augmentation Engine: To circumvent inherent C++ package conflicts detected in parallel environments between `cv2` (OpenCV) and memory buffers, the entire data ingestion and augmentation pipeline was engineered from scratch employing pure Python `PIL` (Pillow) and `torchvision` modules.
+3. Augmentations Used: During the `__getitem__` batch collation, the data undergoes rigorous random augmentations including:
+   - Spatial: Random horizontal/vertical flips and discretionary 90-degree rotations.
+   - Illumination Jitter: Random brightness and contrast scaling to simulate harsh, uncontrolled robotic lighting environments.
+   - Optical Degration: Random Gaussian blurring to simulate poor focal depth issues inherent to moving robotics.
+   - Contrast Enhancement: CLAHE-like auto-contrast and specific sharpener filters applied sporadically to artificially elevate crack edge gradients.
+
+================================================================================
+Results
+================================================================================
+The execution pipeline is established to produce detailed reporting immediately upon training completion:
+1. Evaluation Metrics: The system iterates through thresholds (from 0.2 through 0.8) and establishes the dynamically optimal confidence threshold based entirely on maximum validation Dice overlap.
+2. Core Performance: It outputs empirical Intersection-over-Union (IoU), Dice Score, Precision, Recall, and F1 boundaries on the unseen validation block.
+3. ROC / AUC Profiling: A pixel-level Receiver Operating Characteristic curve computes the overall area under the curve to visualize True Positive robustness.
+4. Confusion Diagnostics: An exact pixel confusion matrix segregates Crack (True positive) vs Background mappings.
+5. Telemetry: Visually, the framework generates a continuous 5-pane storyboard highlighting: the Original Image, the Ground Truth, the Raw Probabilistic Heatmap, the Post-Processed Segmentation, and a critical Error Map delineating False Positives (red) versus False Negatives (blue).
