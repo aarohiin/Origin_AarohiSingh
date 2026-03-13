@@ -1,0 +1,49 @@
+dataset:
+  cracks_dir: "./cracks.v1i.coco"          # override with absolute path if needed
+  drywall_dir: "./Drywall-Join-Detect.v2i.coco"
+  roboflow_api_key: "YOUR_API_KEY"         # set to download automatically
+  cracks_workspace: "cracks"
+  cracks_version: 1
+  drywall_workspace: "drywall-join-detect"
+  drywall_version: 2
+
+model:
+  name: "CIDAS/clipseg-rd64-refined"
+  image_size: 352
+  use_lora: false
+  lora_r: 8
+  lora_alpha: 32
+  gradient_checkpointing: false
+
+training:
+  epochs: 10
+  batch_size: 4
+  accumulation_steps: 4          # effective batch = batch_size * accumulation_steps
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  warmup_epochs: 1
+  mixed_precision: true
+  early_stopping_patience: 3
+  seed: 42
+
+loss:
+  bce_weight: 0.5
+  dice_weight: 0.5
+  focal_gamma: 2.0
+  pos_weight: 10.0
+  use_boundary_loss: true
+
+inference:
+  thresholds: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+  use_tta: true
+  morph_close_kernel: 5
+  min_component_area: 100
+  prompts:
+    - "segment crack"
+    - "cracks in concrete"
+    - "damaged surface"
+
+paths:
+  checkpoint_dir: "./checkpoints"
+  output_dir: "./outputs"
+  log_dir: "./runs"
